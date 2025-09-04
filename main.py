@@ -3,15 +3,13 @@ import uuid
 from uuid import UUID
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from mcp.client.streamable_http import streamablehttp_client
 from pydantic import BaseModel
 from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models.openai import OpenAIModel
 from strands.tools.mcp import MCPClient
-
-from custom_hooks import DebuggingHook, SimplePIIMaskHooks
 
 # Load environment variables from .env file
 load_dotenv()
@@ -40,40 +38,41 @@ session_agents: dict[UUID, Agent] = {}
 
 
 @app.post("/chat")
-async def chat_endpoint(request: ChatRequest):
-    user_guid = await get_user_guid()
+async def chat_endpoint(
+    request: ChatRequest,
+    authorization: str | None = Header(None),
+):
     if request.session_id not in session_clients:
-        client = MCPClient(lambda: streamablehttp_client("http://0.0.0.0:8000/mcp/"))
+        client = MCPClient(
+            lambda: streamablehttp_client(
+                "http://0.0.0.0:8000/mcp",
+                headers={"Authorization": f"Bearer {authorization.split(" ", 1)[1]}"},
+            )
+        )
         session_clients[request.session_id] = client
         with client:
             tools = client.list_tools_sync()
 
         llm = OpenAIModel(client_args={"api_key": OPENAI_API_KEY}, model_id=MODEL)
-        prompt = f"""
+        prompt = """
             You are an order management assistant chatbot. Follow these steps:
 
-
-            1. The current user GUID is {user_guid}. Use it for all requests to MCP.
-            2. If any required input field is missing, respond with an error message specifying the missing field.
-            3. If the user request is about creating an order, include the unique order ID in the response. Clearly state the order ID in the natural language response.
-
-            IMPORTANT FOR RESPONSE GENERATION:
-            1. Some PII data in the input are replaced with placeholders like [PLACEHOLDERNAME-UUID]. It will be reverse engineered to return original value to users, so don't alter the placeholders in your response.
-            Example: "Your order with ID [ORDER-1234] has been created successfully" response will be reverse engineered to "Your order with ID 1234 has been created successfully" before returning to user.
+            1. If any required input field is missing, respond with an error message specifying the missing field.
+            2. If the user request is about creating an order, include the unique order ID in the response. Clearly state the order ID in the natural language response.
 
             """
-        mask_hook = SimplePIIMaskHooks()
 
         agent = Agent(
             model=llm,
             tools=tools,
             conversation_manager=SlidingWindowConversationManager(),
             system_prompt=prompt,
-            hooks=[mask_hook, DebuggingHook()],
         )
         agent.session_id = request.session_id
         session_agents[request.session_id] = agent
-        session_agents[request.session_id] = {"agent": agent, "mask_hook": mask_hook}
+        session_agents[request.session_id] = {
+            "agent": agent,
+        }
 
     client = session_clients[request.session_id]
     session_data = session_agents[request.session_id]
@@ -82,12 +81,7 @@ async def chat_endpoint(request: ChatRequest):
         response = session_data["agent"](request.query)
         message = response.message.get("content", [{}])[0].get("text", "")
 
-        # Unmask the response before returning to user
-        unmasked_message = session_data["mask_hook"]._unmask_text(
-            message, str(request.session_id)
-        )
-
-        return {"message": unmasked_message}
+        return {"message": message}
 
 
 if __name__ == "__main__":
