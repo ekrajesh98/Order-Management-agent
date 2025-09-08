@@ -1,0 +1,43 @@
+services:
+  chatbot_api:
+    build:
+        context: .
+        dockerfile: docker/api/Dockerfile
+    image: chatbot_api
+    container_name: chatbot_api
+    ports:
+      - "127.0.0.1:9000:8000"
+    env_file:
+      - ./.env
+    environment:
+      - CHATBOT_API_LOG_LEVEL=INFO
+      - DB__HOST=chatbot_postgres
+      - CHATBOT_API_AWS__S3_URL=http://localstack:4567
+    volumes:
+      - .:/app
+    depends_on:
+      - chatbot_postgres
+      - chatbot_localstack
+
+  chatbot_postgres:
+    image: postgres:15-alpine
+    container_name: chatbot_postgres
+    environment:
+      - POSTGRES_USER=${DB__USER}
+      - POSTGRES_PASSWORD=${DB__PASSWORD}
+      - POSTGRES_DB=${DB__NAME}
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  chatbot_localstack:
+    image: localstack/localstack
+    container_name: chatbot_localstack
+    environment:
+      - DEBUG=0
+      - SERVICES=s3
+      - X_DEFAULT_REGION=eu-west-1
+    ports:
+      - "127.0.0.1:4567:4566"
+    volumes:
+      - "./docker/localstack/init-resources.sh:/etc/localstack/init/ready.d/init-resources.sh"
+      - "/var/run/docker.sock:/var/run/docker.sock"

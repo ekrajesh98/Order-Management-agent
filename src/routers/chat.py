@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header
+from fastapi import APIRouter, FastAPI, Header
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
@@ -6,13 +6,15 @@ from strands.models.openai import OpenAIModel
 from strands.session.file_session_manager import FileSessionManager
 from strands.tools.mcp import MCPClient
 
-from config import settings
-from models.pydantic import ChatRequest
+from src.config import settings
+from src.models.pydantic import ChatRequest
 
 app = FastAPI()
 
+router = APIRouter()
 
-@app.post("/chat")
+
+@router.post("/chat")
 async def chat_endpoint(
     request: ChatRequest,
     authorization: str | None = Header(None),
@@ -55,9 +57,3 @@ async def chat_endpoint(
         message = response.message.get("content", [{}])[0].get("text", "")
 
         return {"message": message}
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=9000)
