@@ -1,9 +1,10 @@
+import boto3
 from fastapi import APIRouter, FastAPI, Header
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models.openai import OpenAIModel
-from strands.session.file_session_manager import FileSessionManager
+from strands.session.s3_session_manager import S3SessionManager
 from strands.tools.mcp import MCPClient
 
 from src.config import settings
@@ -41,8 +42,13 @@ async def chat_endpoint(
 
     session_id = str(request.session_id)
 
-    session_manager = FileSessionManager(
-        session_id=session_id, storage_dir=settings.FILE_SESSION.STORAGE_DIR
+    boto_session = boto3.Session(region_name=settings.S3_SESSION.REGION_NAME)
+
+    session_manager = S3SessionManager(
+        session_id=session_id,
+        bucket=settings.S3_SESSION.BUCKET,
+        prefix=settings.S3_SESSION.PREFIX,
+        boto_session=boto_session,
     )
 
     agent = Agent(

@@ -26,6 +26,12 @@ class FileSessionSettings(BaseModel):
     STORAGE_DIR: str = "./sessions"
 
 
+class S3SessionSettings(BaseModel):
+    BUCKET: str
+    PREFIX: str = ""
+    REGION_NAME: str | None = None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_nested_delimiter="__",
@@ -40,6 +46,7 @@ class Settings(BaseSettings):
         BeforeValidator(parse_cors),
     ]
     LOG_LEVEL: str = "INFO"
+    S3_SESSION: S3SessionSettings
 
 
 settings = Settings()
