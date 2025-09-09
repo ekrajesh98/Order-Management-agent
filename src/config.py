@@ -22,10 +22,6 @@ class MCPServerSettings(BaseModel):
     URL: str
 
 
-class FileSessionSettings(BaseModel):
-    STORAGE_DIR: str = "./sessions"
-
-
 class S3SessionSettings(BaseModel):
     BUCKET: str
     PREFIX: str = ""
@@ -39,7 +35,6 @@ class Settings(BaseSettings):
     )
     MODEL: ModelSettings
     MCP_SERVER: MCPServerSettings
-    FILE_SESSION: FileSessionSettings = FileSessionSettings()
 
     BACKEND_CORS_ORIGINS: Annotated[
         list[AnyUrl] | str,
