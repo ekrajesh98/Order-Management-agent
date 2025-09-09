@@ -6,7 +6,8 @@ if [ "$APP_ENVIRONMENT" = "local" ]; then
         uvicorn src.main:app \
                 --host "$APP_HOST" \
                 --port "$APP_PORT" \
-                --log-level "$APP_LOG_LEVEL"
+                --log-level "$APP_LOG_LEVEL" \
+                --reload
 else
         echo "Starting application with OpenTelemetry instrumentation..."
         exec opentelemetry-instrument \
