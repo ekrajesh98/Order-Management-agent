@@ -20,45 +20,37 @@ async def chat_endpoint(
     request: ChatRequest,
     authorization: str | None = Header(None),
 ):
+    token = authorization.split(" ", 1)[1] if authorization else ""
     client = MCPClient(
         lambda: streamablehttp_client(
             settings.MCP_SERVER.URL,
-            headers={"Authorization": f"Bearer {authorization.split(" ", 1)[1]}"},
+            headers={"Authorization": f"Bearer {token}"},
         )
     )
+
     with client:
         tools = client.list_tools_sync()
 
-    llm = OpenAIModel(
-        client_args={"api_key": settings.MODEL.API_KEY}, model_id=settings.MODEL.NAME
-    )
-    prompt = """
-        You are an order management assistant chatbot. Follow these steps:
+        agent = Agent(
+            model=OpenAIModel(
+                client_args={"api_key": settings.MODEL.API_KEY},
+                model_id=settings.MODEL.NAME,
+            ),
+            tools=tools,
+            conversation_manager=SlidingWindowConversationManager(),
+            system_prompt="""
+                You are an order management assistant chatbot. Follow these steps:
+                1. If any required input field is missing, respond with an error message specifying the missing field.
+                2. If the user request is about creating an order, include the unique order ID in the response. Clearly state the order ID in the natural language response.
+            """,
+            session_manager=S3SessionManager(
+                session_id=str(request.session_id),
+                bucket=settings.S3_SESSION.BUCKET,
+                prefix=settings.S3_SESSION.PREFIX,
+                boto_session=boto3.Session(region_name=settings.S3_SESSION.REGION_NAME),
+            ),
+        )
 
-        1. If any required input field is missing, respond with an error message specifying the missing field.
-        2. If the user request is about creating an order, include the unique order ID in the response. Clearly state the order ID in the natural language response.
-
-        """
-
-    session_id = str(request.session_id)
-
-    boto_session = boto3.Session(region_name=settings.S3_SESSION.REGION_NAME)
-
-    session_manager = S3SessionManager(
-        session_id=session_id,
-        bucket=settings.S3_SESSION.BUCKET,
-        prefix=settings.S3_SESSION.PREFIX,
-        boto_session=boto_session,
-    )
-
-    agent = Agent(
-        model=llm,
-        tools=tools,
-        conversation_manager=SlidingWindowConversationManager(),
-        system_prompt=prompt,
-        session_manager=session_manager,
-    )
-    with client:
         response = agent(request.query)
         message = response.message.get("content", [{}])[0].get("text", "")
 
