@@ -1,3 +1,4 @@
+import hashlib
 import uuid
 
 # from copy import deepcopy
@@ -31,9 +32,13 @@ class PIIMaskingService:
             cls._instance = obj
         return cls._instance
 
-    def _get_new_name_for_entity(self, entity: str) -> str:
+    def _stable_redaction_key(self, entity_type: str, original: str) -> str:
+        digest = hashlib.sha256(original.encode("utf-8")).hexdigest()[:8]
+        return f"{entity_type}_{digest}"
+
+    def _get_new_name_for_entity(self, entity: str, text: str = "") -> str:
         if entity in self.operators:
-            return f"{entity}_{uuid.uuid4()}"
+            return self._stable_redaction_key(entity, text)
         else:
             return entity
 
@@ -45,7 +50,6 @@ class PIIMaskingService:
         if not text:
             return text
 
-        pii_data = {}
         analyzer_result = self.analyzer.analyze(
             text=text,
             language="en",
@@ -54,8 +58,8 @@ class PIIMaskingService:
             score_threshold=0.7,
         )
         for res in analyzer_result:
-            res.entity_type = self._get_new_name_for_entity(res.entity_type)
-            pii_data[res.entity_type] = text[res.start : res.end]
+            pii_text = text[res.start : res.end]
+            res.entity_type = self._get_new_name_for_entity(res.entity_type, pii_text)
 
         result = self.anonymizer.anonymize(
             text=text,

@@ -1,64 +1,32 @@
 from fastapi import APIRouter, FastAPI, Header
-from mcp.client.streamable_http import streamablehttp_client
-from strands import Agent
-from strands.agent.conversation_manager import SlidingWindowConversationManager
-from strands.models.openai import OpenAIModel
-from strands.session.file_session_manager import FileSessionManager
-from strands.tools.mcp import MCPClient
 
-from src.config import settings
+from src.agent.agent_service import OrderManagementAgentService
 from src.models.pydantic import ChatRequest
-from src.pii_masking_hook import DebuggingHook
-from src.pii_safe_agent import PiiMaskingHook
 
 app = FastAPI()
 
 router = APIRouter()
+agent_service = OrderManagementAgentService()
 
 
 @router.post("/chat")
 async def chat_endpoint(
     request: ChatRequest,
     authorization: str | None = Header(None),
-):
+) -> dict:
+    """
+    Chat endpoint for order management operations.
+
+    Args:
+        request: Chat request containing query and session information
+        authorization: Optional authorization header with Bearer token
+
+    Returns:
+        Dictionary containing the agent's response message
+    """
+
     token = authorization.split(" ", 1)[1] if authorization else ""
-    client = MCPClient(
-        lambda: streamablehttp_client(
-            settings.MCP_SERVER.URL,
-            headers={"Authorization": f"Bearer {token}"},
-        )
-    )
 
-    with client:
-        tools = client.list_tools_sync()
+    response = await agent_service.process_chat_request(request, token)
 
-        session_manager = FileSessionManager(
-            session_id=str(request.session_id),
-            storage_dir="user-sessions",  # Optional, defaults to a temp directory
-        )
-
-        agent = Agent(
-            model=OpenAIModel(
-                client_args={"api_key": settings.MODEL.API_KEY},
-                model_id=settings.MODEL.NAME,
-            ),
-            tools=tools,
-            conversation_manager=SlidingWindowConversationManager(),
-            system_prompt="""
-                You are an order management assistant chatbot. Follow these steps:
-                1. If any required input field is missing, respond with an error message specifying the missing field.
-                2. If the user request is about creating an order, include the unique order ID in the response. Clearly state the order ID in the natural language response.
-            """,
-            # session_manager=S3SessionManager(
-            #     session_id=str(request.session_id),
-            #     bucket=settings.S3_SESSION.BUCKET,
-            #     prefix=settings.S3_SESSION.PREFIX,
-            #     boto_session=boto3.Session(region_name=settings.S3_SESSION.REGION_NAME),
-            # ),
-            session_manager=session_manager,
-            hooks=[PiiMaskingHook(session_manager), DebuggingHook()],
-        )
-        response = agent(request.query)
-        message = response.message.get("content", [{}])[0].get("text", "")
-
-        return {"message": message}
+    return response
