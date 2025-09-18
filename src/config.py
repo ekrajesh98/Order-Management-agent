@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Annotated
 
 from pydantic import AnyUrl, BaseModel, BeforeValidator
@@ -26,6 +27,23 @@ class S3SessionSettings(BaseModel):
     BUCKET: str
     PREFIX: str = ""
     REGION_NAME: str | None = None
+
+
+class RedisSettings(BaseModel):
+    HOST: str
+    PORT: int
+    PASSWORD: str | None = None
+    USE_TLS: bool = True
+
+    @cached_property
+    def URL(self) -> str:  # noqa: N802
+        scheme = "rediss" if self.USE_TLS else "redis"
+        auth_part = f":{self.PASSWORD}@" if self.PASSWORD else ""
+        return f"{scheme}://{auth_part}{self.HOST}:{self.PORT}"
+
+    # @cached_property
+    # def CONSENT_STATUS_CACHE(self) -> RedisConsentStatusCache:  # noqa: N802
+    #     return RedisConsentStatusCache(redis_url=self.URL)
 
 
 class Settings(BaseSettings):

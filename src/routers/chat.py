@@ -1,14 +1,15 @@
-import boto3
 from fastapi import APIRouter, FastAPI, Header
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models.openai import OpenAIModel
-from strands.session.s3_session_manager import S3SessionManager
+from strands.session.file_session_manager import FileSessionManager
 from strands.tools.mcp import MCPClient
 
 from src.config import settings
 from src.models.pydantic import ChatRequest
+from src.pii_masking_hook import DebuggingHook
+from src.pii_safe_agent import PiiMaskingHook
 
 app = FastAPI()
 
@@ -31,6 +32,11 @@ async def chat_endpoint(
     with client:
         tools = client.list_tools_sync()
 
+        session_manager = FileSessionManager(
+            session_id=str(request.session_id),
+            storage_dir="user-sessions",  # Optional, defaults to a temp directory
+        )
+
         agent = Agent(
             model=OpenAIModel(
                 client_args={"api_key": settings.MODEL.API_KEY},
@@ -43,14 +49,15 @@ async def chat_endpoint(
                 1. If any required input field is missing, respond with an error message specifying the missing field.
                 2. If the user request is about creating an order, include the unique order ID in the response. Clearly state the order ID in the natural language response.
             """,
-            session_manager=S3SessionManager(
-                session_id=str(request.session_id),
-                bucket=settings.S3_SESSION.BUCKET,
-                prefix=settings.S3_SESSION.PREFIX,
-                boto_session=boto3.Session(region_name=settings.S3_SESSION.REGION_NAME),
-            ),
+            # session_manager=S3SessionManager(
+            #     session_id=str(request.session_id),
+            #     bucket=settings.S3_SESSION.BUCKET,
+            #     prefix=settings.S3_SESSION.PREFIX,
+            #     boto_session=boto3.Session(region_name=settings.S3_SESSION.REGION_NAME),
+            # ),
+            session_manager=session_manager,
+            hooks=[PiiMaskingHook(session_manager), DebuggingHook()],
         )
-
         response = agent(request.query)
         message = response.message.get("content", [{}])[0].get("text", "")
 
