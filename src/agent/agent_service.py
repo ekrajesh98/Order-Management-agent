@@ -1,6 +1,7 @@
-from typing import Any, Dict
+from typing import Any
 
 from src.agent.agent_factory import MCPClientFactory, OrderManagementAgentFactory
+from src.context.request_context import RequestContext
 from src.models.pydantic import ChatRequest
 
 
@@ -12,8 +13,11 @@ class OrderManagementAgentService:
         self.client_factory = MCPClientFactory()
 
     async def process_chat_request(
-        self, request: ChatRequest, authorization_token: str = ""
-    ) -> Dict[str, Any]:
+        self,
+        request: ChatRequest,
+        context: RequestContext,
+        authorization_token: str = "",
+    ) -> dict[str, Any]:
         """
         Process a chat request using the order management agent.
 
@@ -24,18 +28,18 @@ class OrderManagementAgentService:
         Returns:
             Dictionary containing the agent's response message
         """
-        client = self.client_factory.create_client(authorization_token)
+        client = await self.client_factory.create_client(authorization_token)
 
         with client:
             tools = client.list_tools_sync()
 
-            agent = self.agent_factory.create_agent(
+            agent = await self.agent_factory.create_agent(
                 session_id=str(request.session_id),
                 tools=tools,
+                context=context,
                 authorization_token=authorization_token,
             )
 
             response = agent(request.query)
-            message = response.message.get("content", [{}])[0].get("text", "")
 
-            return {"message": message}
+            return response

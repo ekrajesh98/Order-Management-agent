@@ -14,7 +14,7 @@ class SensitiveDataAnonymizerABC(ABC):
     """
 
     @abstractmethod
-    def anonymize(
+    async def anonymize(
         self, text: str, analyzer_results: list[AnalyzerResult]
     ) -> AnonymizerResult:
         """

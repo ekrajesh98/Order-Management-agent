@@ -9,14 +9,18 @@ from strands.tools.mcp import MCPClient
 
 from src.agent.custom_hooks import SensitiveDataMaskingHook
 from src.config import settings
+from src.context.request_context import RequestContext
 
 
 class OrderManagementAgentFactory:
     """Factory for creating order management agents with proper configuration."""
 
     @staticmethod
-    def create_agent(
-        session_id: str, tools: List[Any], authorization_token: str = ""
+    async def create_agent(
+        session_id: str,
+        tools: List[Any],
+        context: RequestContext,
+        authorization_token: str = "",
     ) -> Agent:
         """
         Create and configure an order management agent.
@@ -49,7 +53,7 @@ class OrderManagementAgentFactory:
             conversation_manager=SlidingWindowConversationManager(),
             system_prompt=system_prompt,
             session_manager=session_manager,
-            hooks=[SensitiveDataMaskingHook(session_manager)],
+            hooks=[SensitiveDataMaskingHook(session_manager, context)],
         )
 
         return agent
@@ -59,7 +63,7 @@ class MCPClientFactory:
     """Factory for creating MCP clients with proper configuration."""
 
     @staticmethod
-    def create_client(authorization_token: str = "") -> MCPClient:
+    async def create_client(authorization_token: str = "") -> MCPClient:
         """
         Create an MCP client with authorization.
 

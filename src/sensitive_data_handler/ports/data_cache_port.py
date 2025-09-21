@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List
 
 
 class SensitiveDataCacheABC(ABC):
@@ -9,7 +9,7 @@ class SensitiveDataCacheABC(ABC):
     """
 
     @abstractmethod
-    def set(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> None:
         """
         Store the mapping from a redacted string (key) to its original text (value).
 
@@ -20,7 +20,7 @@ class SensitiveDataCacheABC(ABC):
         """
 
     @abstractmethod
-    def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """
         Retrieve the original text for a given redacted string.
 
@@ -31,7 +31,7 @@ class SensitiveDataCacheABC(ABC):
         """
 
     @abstractmethod
-    def delete(self, key: str) -> bool:
+    async def delete(self, key: str) -> bool:
         """
         Delete a mapping from the cache.
 
@@ -42,7 +42,7 @@ class SensitiveDataCacheABC(ABC):
         """
 
     @abstractmethod
-    def exists(self, key: str) -> bool:
+    async def exists(self, key: str) -> bool:
         """
         Check whether a redacted string exists in the cache.
 
@@ -53,7 +53,7 @@ class SensitiveDataCacheABC(ABC):
         """
 
     @abstractmethod
-    def keys(self, pattern: Optional[str] = None) -> List[str]:
+    async def keys(self, pattern: str | None = None) -> List[str]:
         """
         List all redacted‐string keys currently stored in the cache.
 
@@ -64,7 +64,20 @@ class SensitiveDataCacheABC(ABC):
         """
 
     @abstractmethod
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """
         Remove all entries from the cache.
+        """
+
+    @abstractmethod
+    async def set_many_under(
+        self, parent_key, kv: dict[str, str], ttl: int = 28_800
+    ) -> None:
+        """
+        Store multiple key-value pairs under a common parent key.
+
+        Args:
+            parent_key: The common prefix for all keys.
+            kv: A dictionary of redacted strings to original texts.
+            ttl: Optional time‐to‐live in seconds for these entries. If None, entries do not expire.
         """

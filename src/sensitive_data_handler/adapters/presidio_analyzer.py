@@ -29,7 +29,7 @@ class PresidioAnalyzer(SensitiveDataAnalyzerABC):
             "ADDRESS",
         ]
 
-    def analyze(
+    async def analyze(
         self,
         text: str,
         entities_to_scan: list[str] = [],

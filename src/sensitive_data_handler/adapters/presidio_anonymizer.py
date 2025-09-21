@@ -24,7 +24,7 @@ class PresidioAnonymizer(SensitiveDataAnonymizerABC):
     ) -> None:
         self._engine = PresidioAnonymizerEngine()
 
-    def anonymize(
+    async def anonymize(
         self, text: str, analyzer_results: list[AnalyzerResult]
     ) -> AnonymizerResult:
         if not text:

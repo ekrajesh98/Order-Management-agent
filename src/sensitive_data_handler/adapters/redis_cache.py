@@ -1,5 +1,5 @@
 import json
-from typing import List, Optional
+from typing import List
 
 import redis.asyncio as aioredis  # type: ignore[import-untyped]
 
@@ -21,7 +21,7 @@ class RedisSensitiveDataCache(SensitiveDataCacheABC):
             )
         return self._redis
 
-    async def set(self, key: str, value: str, ttl: Optional[int] = None) -> None:
+    async def set(self, key: str, value: str, ttl: int | None = None) -> None:
         """
         Store the mapping from redacted key to original text.
         If the key already exists, simply reset its TTL.
@@ -34,7 +34,7 @@ class RedisSensitiveDataCache(SensitiveDataCacheABC):
         else:
             await client.set(name=key, value=data, ex=expire)
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         """
         Retrieve the original text for a given redacted key.
         """
@@ -59,7 +59,7 @@ class RedisSensitiveDataCache(SensitiveDataCacheABC):
         client = await self._get_redis()
         return await client.exists(key) == 1
 
-    async def keys(self, pattern: Optional[str] = None) -> List[str]:
+    async def keys(self, pattern: str | None = None) -> List[str]:
         """
         List all redacted-string keys currently stored in the cache.
         """
@@ -79,3 +79,23 @@ class RedisSensitiveDataCache(SensitiveDataCacheABC):
         """
         client = await self._get_redis()
         await client.flushdb()
+
+    async def set_many_under(
+        self, parent_key: str, kv: dict[str, str], ttl: int = 28_800
+    ) -> None:
+        """
+        Merge `kv` into the JSON dict stored at `parent_key`.
+        Fields in `kv` overwrite existing ones with the same name.
+        Existing fields not in `kv` are preserved.
+        """
+        client = await self._get_redis()
+        expire = ttl if ttl is not None else self._expiry
+        raw = await client.get(parent_key)
+        try:
+            data: dict[str, str] = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            data = {}
+
+        data.update(kv)
+
+        await client.set(parent_key, json.dumps(data), ex=expire)

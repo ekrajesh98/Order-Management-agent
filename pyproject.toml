@@ -15,7 +15,8 @@ dependencies = [
     "openai (>=1.100.1,<2.0.0)",
     "strands-agents (>=1.8.0,<2.0.0)",
     "spacy (>=3.8.7,<4.0.0)",
-    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl"
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
+    "redis (>=6.4.0,<7.0.0)"
 
 ]
 
