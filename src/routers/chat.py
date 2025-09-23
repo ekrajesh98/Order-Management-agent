@@ -12,7 +12,6 @@ from src.sensitive_data_handler.data_handler_service import (
 app = FastAPI()
 
 router = APIRouter()
-agent_service = OrderManagementAgentService()
 
 
 @router.post("/chat")
@@ -34,6 +33,8 @@ async def chat_endpoint(
         Dictionary containing the agent's response message
     """
     session_id = str(chat_request.session_id)
+    agent_service = OrderManagementAgentService(session_id)
+
     token = authorization.split(" ", 1)[1] if authorization else ""
 
     response = await agent_service.process_chat_request(chat_request, context, token)

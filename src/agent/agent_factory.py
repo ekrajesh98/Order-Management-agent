@@ -5,18 +5,28 @@ from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
 from strands.models.openai import OpenAIModel
 from strands.session.file_session_manager import FileSessionManager
+from strands.session.s3_session_manager import S3SessionManager
 from strands.tools.mcp import MCPClient
 
 from src.agent.custom_hooks import SensitiveDataMaskingHook
-from src.config import settings
 from src.context.request_context import RequestContext
 
 
 class OrderManagementAgentFactory:
     """Factory for creating order management agents with proper configuration."""
 
-    @staticmethod
+    def __init__(
+        self,
+        model_name: str,
+        model_api_key: str,
+        session_manager: FileSessionManager | S3SessionManager,
+    ) -> None:
+        self.model_name = model_name
+        self.__model_api_key = model_api_key
+        self.session_manager = session_manager
+
     async def create_agent(
+        self,
         session_id: str,
         tools: List[Any],
         context: RequestContext,
@@ -33,10 +43,6 @@ class OrderManagementAgentFactory:
         Returns:
             Configured Agent instance
         """
-        session_manager = FileSessionManager(
-            session_id=session_id,
-            storage_dir="user-sessions",
-        )
 
         system_prompt = """
             You are an order management assistant chatbot. Follow these steps:
@@ -46,14 +52,14 @@ class OrderManagementAgentFactory:
 
         agent = Agent(
             model=OpenAIModel(
-                client_args={"api_key": settings.MODEL.API_KEY},
-                model_id=settings.MODEL.NAME,
+                client_args={"api_key": self.__model_api_key},
+                model_id=self.model_name,
             ),
             tools=tools,
             conversation_manager=SlidingWindowConversationManager(),
             system_prompt=system_prompt,
-            session_manager=session_manager,
-            hooks=[SensitiveDataMaskingHook(session_manager, context)],
+            session_manager=self.session_manager,
+            hooks=[SensitiveDataMaskingHook(self.session_manager, context, session_id)],
         )
 
         return agent
@@ -62,8 +68,10 @@ class OrderManagementAgentFactory:
 class MCPClientFactory:
     """Factory for creating MCP clients with proper configuration."""
 
-    @staticmethod
-    async def create_client(authorization_token: str = "") -> MCPClient:
+    def __init__(self, mcp_server_url: str) -> None:
+        self.mcp_server_url = mcp_server_url
+
+    async def create_client(self, authorization_token: str = "") -> MCPClient:
         """
         Create an MCP client with authorization.
 
@@ -75,7 +83,7 @@ class MCPClientFactory:
         """
         return MCPClient(
             lambda: streamablehttp_client(
-                settings.MCP_SERVER.URL,
+                self.mcp_server_url,
                 headers={"Authorization": f"Bearer {authorization_token}"},
             )
         )

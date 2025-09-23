@@ -1,6 +1,7 @@
 from typing import Any
 
 from src.agent.agent_factory import MCPClientFactory, OrderManagementAgentFactory
+from src.config import settings
 from src.context.request_context import RequestContext
 from src.models.pydantic import ChatRequest
 
@@ -8,9 +9,14 @@ from src.models.pydantic import ChatRequest
 class OrderManagementAgentService:
     """Service for handling order management agent operations."""
 
-    def __init__(self):
-        self.agent_factory = OrderManagementAgentFactory()
-        self.client_factory = MCPClientFactory()
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+        self.agent_factory = OrderManagementAgentFactory(
+            settings.MODEL.NAME,
+            settings.MODEL.API_KEY,
+            settings.SESSION_REPOSITORY.get_session_manager(self.session_id),
+        )
+        self.client_factory = MCPClientFactory(settings.MCP_SERVER.URL)
 
     async def process_chat_request(
         self,
