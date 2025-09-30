@@ -191,9 +191,6 @@ class SqlAlchemySessionManager(RepositorySessionManager, SessionRepository):
                 raise ValueError(
                     f"Message with id {session_message.message_id} not found for the given IDs"
                 )
-            print(
-                f"===================updating message with id: {session_message.message_id} with values: {session_message.to_dict()}"
-            )
             db_message.message_data = session_message.to_dict()
             db_message.updated_at = get_utc_now()
             db_session.commit()
