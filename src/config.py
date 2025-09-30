@@ -7,6 +7,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from strands.session.file_session_manager import FileSessionManager
 from strands.session.s3_session_manager import S3SessionManager
 
+from src.agent.custom_repository.sqlalchemy_repository import (
+    SqlAlchemySessionManager,
+)
 from src.sensitive_data_handler.adapters.presidio_analyzer import PresidioAnalyzer
 from src.sensitive_data_handler.adapters.presidio_anonymizer import PresidioAnonymizer
 from src.sensitive_data_handler.adapters.redis_cache import RedisSensitiveDataCache
@@ -82,6 +85,7 @@ class SensitiveDataHandlerSettings(BaseModel):
 class RepositoryType(StrEnum):
     S3 = "S3"
     FILE = "file"
+    DATABASE = "database"
 
     @classmethod
     def _missing_(cls, value):
@@ -112,8 +116,34 @@ class SessionManagementRepository(BaseModel):
                     session_id=session_id,
                     storage_dir=settings.FILE_SESSION_REPO.STORAGE_DIR,
                 )
+            case RepositoryType.DATABASE:
+                return SqlAlchemySessionManager(session_id)
             case _:
                 raise ValueError(f"Unsupported repository type: {self.TYPE}")
+
+
+class DBSettings(BaseModel):
+    HOST: str
+    NAME: str
+    PASSWORD: str
+    PORT: int
+    USER: str
+    SQLALCHEMY_ECHO: bool = False
+
+    @cached_property
+    def URL(self) -> str:  # noqa: N802
+        return f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.NAME}"
+
+    @cached_property
+    def URL_SYNC(self) -> str:
+        """
+        Sync SQLAlchemy database URL using psycopg2 driver.
+        """
+        return (
+            f"postgresql+psycopg2://{self.USER}:"
+            f"{self.PASSWORD}@{self.HOST}:"
+            f"{self.PORT}/{self.NAME}"
+        )
 
 
 class Settings(BaseSettings):
@@ -138,6 +168,8 @@ class Settings(BaseSettings):
     )
 
     SESSION_REPOSITORY: SessionManagementRepository
+
+    DB: DBSettings
 
     @model_validator(mode="after")
     def validate_session_repo_settings(self):

@@ -16,7 +16,11 @@ dependencies = [
     "strands-agents (>=1.8.0,<2.0.0)",
     "spacy (>=3.8.7,<4.0.0)",
     "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl",
-    "redis (>=6.4.0,<7.0.0)"
+    "redis (>=6.4.0,<7.0.0)",
+    "sqlalchemy[asyncio] (>=2.0.43,<3.0.0)",
+    "alembic (>=1.16.5,<2.0.0)",
+    "asyncpg (>=0.30.0,<0.31.0)",
+    "psycopg2-binary (>=2.9.10,<3.0.0)",
 
 ]
 

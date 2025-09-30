@@ -9,6 +9,9 @@ from strands.session.s3_session_manager import S3SessionManager
 from strands.tools.mcp import MCPClient
 
 from src.agent.custom_hooks import SensitiveDataMaskingHook
+from src.agent.custom_repository.sqlalchemy_repository import (
+    SqlAlchemySessionManager,
+)
 from src.context.request_context import RequestContext
 
 
@@ -19,7 +22,9 @@ class OrderManagementAgentFactory:
         self,
         model_name: str,
         model_api_key: str,
-        session_manager: FileSessionManager | S3SessionManager,
+        session_manager: FileSessionManager
+        | S3SessionManager
+        | SqlAlchemySessionManager,
     ) -> None:
         self.model_name = model_name
         self.__model_api_key = model_api_key
@@ -28,6 +33,7 @@ class OrderManagementAgentFactory:
     async def create_agent(
         self,
         session_id: str,
+        agent_id: str,
         tools: List[Any],
         context: RequestContext,
         authorization_token: str = "",
@@ -37,6 +43,7 @@ class OrderManagementAgentFactory:
 
         Args:
             session_id: Unique session identifier
+            agent_id: Unique agent identifier
             tools: List of MCP tools available to the agent
             authorization_token: Bearer token for tool authorization
 
@@ -60,6 +67,7 @@ class OrderManagementAgentFactory:
             system_prompt=system_prompt,
             session_manager=self.session_manager,
             hooks=[SensitiveDataMaskingHook(self.session_manager, context, session_id)],
+            agent_id=agent_id,
         )
 
         return agent

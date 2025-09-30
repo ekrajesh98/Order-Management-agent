@@ -41,6 +41,7 @@ RUN apt-get autoremove && \
 
 # INFO: Copy the application
 COPY src/ /app/src/
+COPY database_migrations/ /app/database_migrations/
 COPY app_start.sh /app/
 
 # INFO: Change ownership of the application
