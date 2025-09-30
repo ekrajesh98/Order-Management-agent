@@ -3,10 +3,17 @@ from typing import Any
 from src.agent.agent_factory import MCPClientFactory, OrderManagementAgentFactory
 from src.config import settings
 from src.context.request_context import RequestContext
-from src.models.pydantic import ChatRequest
+
+from .agent_port import AgentServiceABC
 
 
-class OrderManagementAgentService:
+class OrderManagementAgentServiceError(Exception):
+    """Custom exception for OrderManagementAgentService errors."""
+
+    pass
+
+
+class OrderManagementAgentService(AgentServiceABC):
     """Service for handling order management agent operations."""
 
     def __init__(self, session_id: str) -> None:
@@ -18,34 +25,30 @@ class OrderManagementAgentService:
         )
         self.client_factory = MCPClientFactory(settings.MCP_SERVER.URL)
 
-    async def process_chat_request(
+    async def process_request(
         self,
-        request: ChatRequest,
+        user_query: str,
+        session_id: str,
+        agent_id: str,
         context: RequestContext,
         authorization_token: str = "",
     ) -> dict[str, Any]:
-        """
-        Process a chat request using the order management agent.
+        try:
+            client = await self.client_factory.create_client(authorization_token)
+            with client:
+                tools = client.list_tools_sync()
 
-        Args:
-            request: Chat request containing query and session info
-            authorization_token: Authorization token for MCP tools
+                agent = await self.agent_factory.create_agent(
+                    session_id=session_id,
+                    agent_id=agent_id,
+                    tools=tools,
+                    context=context,
+                    authorization_token=authorization_token,
+                )
 
-        Returns:
-            Dictionary containing the agent's response message
-        """
-        client = await self.client_factory.create_client(authorization_token)
+                response = agent(user_query)
 
-        with client:
-            tools = client.list_tools_sync()
+                return response
 
-            agent = await self.agent_factory.create_agent(
-                session_id=str(request.session_id),
-                tools=tools,
-                context=context,
-                authorization_token=authorization_token,
-            )
-
-            response = agent(request.query)
-
-            return response
+        except Exception as e:
+            raise OrderManagementAgentServiceError from e
