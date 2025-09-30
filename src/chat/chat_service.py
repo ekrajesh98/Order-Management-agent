@@ -62,9 +62,7 @@ class ChatService(ChatServiceABC):
             await self._db_session.refresh(agent)
         else:
             agent = agents[0]
-        print(
-            f"===================found session: {session.session_uuid} ==================="
-        )
+
         response = await self.agent_service.process_request(
             user_query, str(session.id), str(agent.id), self.request_context, token
         )
