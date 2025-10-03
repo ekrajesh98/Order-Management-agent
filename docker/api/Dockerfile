@@ -17,8 +17,10 @@ WORKDIR /app
 
 # INFO: Install system dependencies
 RUN apt-get update && \
-    apt-get install -y openssl --no-install-recommends \
-    curl \
+    apt-get install -y --no-install-recommends \
+        openssl \
+        curl \
+        build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # INFO: Install poetry
