@@ -1,4 +1,5 @@
 from presidio_analyzer import AnalyzerEngine
+from presidio_analyzer.nlp_engine import SpacyNlpEngine
 
 from src.models.pydantic import AnalyzerResult
 from src.sensitive_data_handler.ports.data_analyzer_port import SensitiveDataAnalyzerABC
@@ -11,7 +12,10 @@ class PresidioAnalyzerEngine:
     def __new__(cls):
         if cls._instance is None:
             obj = super().__new__(cls)
-            obj._analyzer = AnalyzerEngine()
+            nlp_engine = SpacyNlpEngine(
+                models=[{"lang_code": "en", "model_name": "en_core_web_sm"}]
+            )
+            obj._analyzer = AnalyzerEngine(nlp_engine=nlp_engine)
             cls._instance = obj
         return cls._instance
 
