@@ -4,7 +4,7 @@
 import asyncio
 
 from strands.hooks import HookProvider, HookRegistry, MessageAddedEvent
-from strands.session import S3SessionManager
+from strands.session.repository_session_manager import RepositorySessionManager
 
 from src.config import settings
 from src.context.request_context import RequestContext
@@ -14,7 +14,7 @@ from src.sensitive_data_handler.data_handler_service import SensitiveDataMasking
 class SensitiveDataMaskingHook(HookProvider):
     def __init__(
         self,
-        session_manager: S3SessionManager,
+        session_manager: RepositorySessionManager,
         request_context: RequestContext,
         session_id: str,
     ) -> None:

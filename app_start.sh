@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+echo "Running database migrations..."
+alembic upgrade head
+
+if [ $? -eq 0 ]; then
+    echo "Database migrations completed successfully"
+else
+    echo "Warning: Database migrations failed. Starting application anyway..."
+fi
+
 if [ "$APP_ENVIRONMENT" = "local" ]; then
         echo "Starting application in local environment without OpenTelemetry..."
         uvicorn src.main:app \

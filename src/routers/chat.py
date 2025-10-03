@@ -1,27 +1,35 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, Header, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, Header
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agent.agent_service import OrderManagementAgentService
+from src.agent.dependencies import resolve_session_id
+from src.chat.chat_port import ChatServiceABC
+from src.chat.chat_service import ChatService, ChatServiceError
 from src.config import settings
-from src.context.dependencies import get_request_context
-from src.context.request_context import RequestContext
+from src.database import get_db_session
 from src.models.pydantic import ChatRequest
-from src.sensitive_data_handler.data_handler_service import (
-    SensitiveDataUnMaskingService,
-)
 
 app = FastAPI()
 
 router = APIRouter()
 
 
+async def _build_chat_service(
+    db_session: AsyncSession,
+    session_id: str,
+) -> ChatServiceABC:
+    agent_service = OrderManagementAgentService(session_id)
+    return ChatService(db_session, session_id, agent_service)
+
+
 @router.post("/chat")
 async def chat_endpoint(
-    request: Request,
     chat_request: ChatRequest,
     background_tasks: BackgroundTasks,
     authorization: str | None = Header(None),
-    context: RequestContext = Depends(get_request_context),
-) -> dict:
+    session_id: int = Depends(resolve_session_id),
+    db_session: AsyncSession = Depends(dependency=get_db_session),
+) -> dict[str, str]:
     """
     Chat endpoint for order management operations.
 
@@ -31,30 +39,25 @@ async def chat_endpoint(
 
     Returns:
         Dictionary containing the agent's response message
+
     """
-    session_id = str(chat_request.session_id)
-    agent_service = OrderManagementAgentService(session_id)
+    try:
+        session_id = str(session_id)
 
-    token = authorization.split(" ", 1)[1] if authorization else ""
+        token = authorization.split(" ", 1)[1] if authorization else ""
 
-    response = await agent_service.process_chat_request(chat_request, context, token)
+        chat_service = await _build_chat_service(db_session, session_id)
 
-    message = response.message.get("content", [{}])[0].get("text", "")
+        response, sensitive_key_value = await chat_service.process_user_chat_request(
+            chat_request.query, token
+        )
 
-    for placeholder, original in context.sensitive_key_value.items():
-        message = message.replace(placeholder, original)
-
-    data_cache = settings.SENSITIVE_DATA_HANDLER.DATA_CACHE
-
-    unmasked_message = await SensitiveDataUnMaskingService(data_cache).process_data(
-        message, session_id, context.sensitive_key_value
-    )
-
-    if context.sensitive_key_value:
         background_tasks.add_task(
             settings.SENSITIVE_DATA_HANDLER.DATA_CACHE.set_many_under,
             session_id,
-            context.sensitive_key_value,
+            sensitive_key_value,
         )
+        return {"message": response}
 
-    return {"message": unmasked_message}
+    except Exception as e:
+        raise ChatServiceError from e
