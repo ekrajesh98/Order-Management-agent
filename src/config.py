@@ -151,6 +151,8 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
         extra="ignore",
     )
+    PATH_PREFIX: str = "/api"
+
     MODEL: ModelSettings
     MCP_SERVER: MCPServerSettings
 
