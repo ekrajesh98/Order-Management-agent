@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from src.agent.agent_service import AgentServiceABC, OrderManagementAgentService
+from src.agent.agent_service import AgentServiceABC
 from src.config import settings
 from src.context.dependencies import get_request_context
 from src.models.database import SessionAgent, UserSession
@@ -28,7 +28,7 @@ class ChatService(ChatServiceABC):
     ) -> None:
         self._db_session = db_session
         self.session_id = session_id
-        self.agent_service = OrderManagementAgentService(session_id)
+        self.agent_service = agent_service
 
         self.request_context = get_request_context()
 
@@ -41,47 +41,49 @@ class ChatService(ChatServiceABC):
         Returns:
             The agent's response message.
         """
-        # try:
-        session_exist_query = (
-            select(UserSession)
-            .options(joinedload(UserSession.agents))
-            .where(UserSession.id == int(self.session_id))
-        )
-        result = await self._db_session.execute(session_exist_query)
-        session = result.scalars().first()
+        try:
+            session_exist_query = (
+                select(UserSession)
+                .options(joinedload(UserSession.agents))
+                .where(UserSession.id == int(self.session_id))
+            )
+            result = await self._db_session.execute(session_exist_query)
+            session = result.scalars().first()
 
-        if not session:
-            raise ChatServiceError("Invalid session ID")
+            if not session:
+                raise ChatServiceError("Invalid session ID")
 
-        agents = session.agents
-        if not agents:
-            agent = SessionAgent()
-            agent.session_id = session.id
-            self._db_session.add(agent)
-            await self._db_session.commit()
-            await self._db_session.refresh(agent)
-        else:
-            agent = agents[0]
+            agents = session.agents
+            if not agents:
+                agent = SessionAgent()
+                agent.session_id = session.id
+                self._db_session.add(agent)
+                await self._db_session.commit()
+                await self._db_session.refresh(agent)
+            else:
+                agent = agents[0]
 
-        response = await self.agent_service.process_request(
-            user_query, str(session.id), str(agent.id), self.request_context, token
-        )
+            response = await self.agent_service.process_request(
+                user_query, str(session.id), str(agent.id), self.request_context, token
+            )
 
-        message = response.message.get("content", [{}])[0].get("text", "")
+            message = response.message.get("content", [{}])[0].get("text", "")
 
-        for (
-            placeholder,
-            original,
-        ) in self.request_context.sensitive_key_value.items():
-            message = message.replace(placeholder, original)
+            for (
+                placeholder,
+                original,
+            ) in self.request_context.sensitive_key_value.items():
+                message = message.replace(placeholder, original)
 
-        data_cache = settings.SENSITIVE_DATA_HANDLER.DATA_CACHE
+            data_cache = settings.SENSITIVE_DATA_HANDLER.DATA_CACHE
 
-        unmasked_message = await SensitiveDataUnMaskingService(data_cache).process_data(
-            message, self.session_id, self.request_context.sensitive_key_value
-        )
+            unmasked_message = await SensitiveDataUnMaskingService(
+                data_cache
+            ).process_data(
+                message, self.session_id, self.request_context.sensitive_key_value
+            )
 
-        return unmasked_message, self.request_context.sensitive_key_value
+            return unmasked_message, self.request_context.sensitive_key_value
 
-        # except Exception as e:
-        #     raise ChatServiceError from e
+        except Exception as e:
+            raise ChatServiceError from e

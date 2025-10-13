@@ -1,17 +1,19 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, Header
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Depends, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.agent.agent_service import OrderManagementAgentService
-from src.agent.dependencies import resolve_session_id
 from src.chat.chat_port import ChatServiceABC
 from src.chat.chat_service import ChatService, ChatServiceError
 from src.config import settings
 from src.database import get_db_session
 from src.models.pydantic import ChatRequest
-
-app = FastAPI()
+from src.routers.dependencies import resolve_session_id
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 async def _build_chat_service(
@@ -23,7 +25,7 @@ async def _build_chat_service(
 
 
 @router.post("/chat")
-async def chat_endpoint(
+async def process_chat_request(
     chat_request: ChatRequest,
     background_tasks: BackgroundTasks,
     authorization: str | None = Header(None),
@@ -59,5 +61,6 @@ async def chat_endpoint(
         )
         return {"message": response}
 
-    except Exception as e:
-        raise ChatServiceError from e
+    except ChatServiceError as e:
+        logger.exception("Chat service error: %s", e)
+        raise e

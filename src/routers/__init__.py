@@ -1,3 +1,3 @@
-from . import chat
+from . import chat, user_session
 
-all_routers = [chat.router]
+all_routers = [chat.router, user_session.router]
