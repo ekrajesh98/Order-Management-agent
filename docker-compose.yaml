@@ -1,12 +1,12 @@
 services:
   chatbot-api:
     build:
-        context: .
-        dockerfile: docker/api/Dockerfile
+      context: .
+      dockerfile: docker/api/Dockerfile
     image: chatbot_api
     container_name: chatbot_api
     ports:
-      - "127.0.0.1:9000:8000"
+      - "0.0.0.0:9000:8000"
     env_file:
       - ./.env
     environment:
@@ -27,7 +27,7 @@ services:
       - POSTGRES_PASSWORD=${DB__PASSWORD}
       - POSTGRES_DB=${DB__NAME}
     ports:
-      - "127.0.0.1:5433:5432"
+      - "0.0.0.0:5433:5432"
 
   chatbot-localstack:
     image: localstack/localstack
@@ -37,13 +37,13 @@ services:
       - SERVICES=s3
       - X_DEFAULT_REGION=us-east-1
     ports:
-      - "127.0.0.1:4567:4566"
+      - "0.0.0.0:4567:4566"
     volumes:
       - "./docker/localstack/init-resources.sh:/etc/localstack/init/ready.d/init-resources.sh"
       - "/var/run/docker.sock:/var/run/docker.sock"
     env_file:
       - ./.env
-  
+
   redis:
     image: redis:latest
     container_name: chatbot_redis
