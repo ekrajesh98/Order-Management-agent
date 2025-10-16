@@ -27,7 +27,7 @@ async def _build_session_service(
 async def create_session(
     user_uuid: UUID = Depends(get_user_uuid),
     db_session: AsyncSession = Depends(get_db_session),
-) -> UUID:
+) -> dict[str, UUID]:
     """
     Create a new user session.
     Args:
@@ -41,7 +41,7 @@ async def create_session(
     try:
         session_service = await _build_session_service(db_session)
         session_uuid = await session_service.create_session(user_uuid)
-        return session_uuid
+        return {"session_uuid": session_uuid}
 
     except UserSessionServiceError as e:
         logger.exception("Error creating user session: %s", e)
