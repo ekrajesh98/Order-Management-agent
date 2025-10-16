@@ -46,7 +46,7 @@ class OrderManagementAgentService(AgentServiceABC):
                     authorization_token=authorization_token,
                 )
 
-                response = agent(user_query)
+                response = await agent.invoke_async(user_query)
 
                 return response
 

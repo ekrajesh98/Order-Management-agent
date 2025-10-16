@@ -54,11 +54,13 @@ async def process_chat_request(
             chat_request.query, token
         )
 
-        background_tasks.add_task(
-            settings.SENSITIVE_DATA_HANDLER.DATA_CACHE.set_many_under,
-            session_id,
-            sensitive_key_value,
-        )
+        if settings.SENSITIVE_DATA_HANDLER.MASK_SENSITIVE_DATA:
+            background_tasks.add_task(
+                settings.SENSITIVE_DATA_HANDLER.DATA_CACHE.set_many_under,
+                session_id,
+                sensitive_key_value,
+            )
+
         return {"message": response}
 
     except ChatServiceError as e:

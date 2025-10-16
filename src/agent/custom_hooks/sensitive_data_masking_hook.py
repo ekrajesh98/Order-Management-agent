@@ -30,26 +30,26 @@ class SensitiveDataMaskingHook(HookProvider):
         registry.add_callback(MessageAddedEvent, self._before_message_added_sync)
 
     def _before_message_added_sync(self, event: MessageAddedEvent) -> None:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
+        if settings.SENSITIVE_DATA_HANDLER.MASK_SENSITIVE_DATA:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
 
-        if loop and loop.is_running():
-            loop.create_task(self._before_message_added(event))
-        else:
-            asyncio.run(self._before_message_added(event))
+            if loop and loop.is_running():
+                loop.create_task(self._before_message_added(event))
+            else:
+                asyncio.run(self._before_message_added(event))
 
     async def _before_message_added(self, event: MessageAddedEvent) -> None:
-        if settings.SENSITIVE_DATA_HANDLER.MASK_SENSITIVE_DATA:
-            masked_message_dict = await self.data_masking_service.process_data(
-                event.message, self.context
-            )
-            event.message.clear()
-            event.message.update(masked_message_dict)
+        masked_message_dict = await self.data_masking_service.process_data(
+            event.message, self.context
+        )
+        event.message.clear()
+        event.message.update(masked_message_dict)
 
-            self.session_manager.update_message(
-                self.session_id,
-                event.agent.agent_id,
-                self.session_manager._latest_agent_message[event.agent.agent_id],
-            )
+        self.session_manager.update_message(
+            self.session_id,
+            event.agent.agent_id,
+            self.session_manager._latest_agent_message[event.agent.agent_id],
+        )
