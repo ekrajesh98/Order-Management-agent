@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -11,12 +11,6 @@ from .base import Base
 class SessionAgentMessage(Base):
     __tablename__ = "session_agent_messages"
     __table_args__ = (
-        UniqueConstraint(
-            "agent_id",
-            "session_id",
-            "agent_message_index",
-            name="uq_session_agent_message_index",
-        ),
         {
             "comment": "Stores messages exchanged between users and agents within a session"
         },
