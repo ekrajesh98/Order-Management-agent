@@ -34,17 +34,7 @@ async def process_chat_request(
     int_session_id: int = Depends(resolve_session_id),
     db_session: AsyncSession = Depends(dependency=get_db_session),
 ) -> dict[str, str]:
-    """
-    Chat endpoint for order management operations.
-
-    Args:
-        request: Chat request containing query and session information
-        authorization: Optional authorization header with Bearer token
-
-    Returns:
-        Dictionary containing the agent's response message
-
-    """
+    
     start_time = get_utc_now()
     try:
         async with (stopwatch := Stopwatch()):
