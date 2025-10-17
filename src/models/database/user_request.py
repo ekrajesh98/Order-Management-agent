@@ -5,6 +5,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     SmallInteger,
+    Text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -14,8 +15,8 @@ from src.utils import get_utc_now
 from .base import Base
 
 
-class UserRequest(Base):
-    __tablename__ = "user_requests"
+class UserChatRequest(Base):
+    __tablename__ = "user_chat_requests"
     __table_args__ = {
         "comment": "Stores information about individual user requests within a session"
     }
@@ -46,6 +47,9 @@ class UserRequest(Base):
 
     processing_time = Column("request_processing_time", DECIMAL(10, 3), nullable=True)
 
+    user_query = Column("request_user_query", Text, nullable=False)
+    agent_response = Column("request_agent_response", Text, nullable=True)
+
     created_at = Column(
         "request_created_at",
         DateTime(timezone=True),
@@ -64,4 +68,4 @@ class UserRequest(Base):
 
     response_status_code = Column("response_status_code", SmallInteger, nullable=True)
 
-    session = relationship("UserSession", back_populates="requests")
+    session = relationship("UserSession", back_populates="chat_requests")

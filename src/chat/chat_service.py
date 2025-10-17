@@ -1,3 +1,6 @@
+import logging
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -5,12 +8,14 @@ from sqlalchemy.orm import joinedload
 from src.agent.agent_service import AgentServiceABC
 from src.config import settings
 from src.context.dependencies import get_request_context
-from src.models.database import SessionAgent, UserSession
+from src.models.database import SessionAgent, UserChatRequest, UserSession
 from src.sensitive_data_handler.data_handler_service import (
     SensitiveDataUnMaskingService,
 )
 
 from .chat_port import ChatServiceABC
+
+logger = logging.getLogger(__name__)
 
 
 class ChatServiceError(Exception):
@@ -87,3 +92,30 @@ class ChatService(ChatServiceABC):
 
         except Exception as e:
             raise ChatServiceError from e
+
+    async def record_user_chat_request(
+        self,
+        session_id: int,
+        user_query: str,
+        agent_response: str,
+        processing_time: float,
+        start_time: datetime,
+        end_time: datetime,
+        response_status_code: int = 200,
+    ) -> None:
+        try:
+            user_chat_request = UserChatRequest()
+            user_chat_request.session_id = session_id
+            user_chat_request.user_query = user_query
+            user_chat_request.agent_response = agent_response
+            user_chat_request.start_time = start_time
+            user_chat_request.end_time = end_time
+            user_chat_request.processing_time = processing_time
+            user_chat_request.response_status_code = response_status_code
+
+            self._db_session.add(user_chat_request)
+            await self._db_session.commit()
+            await self._db_session.refresh(user_chat_request)
+
+        except Exception as e:
+            logger.exception("Error recording user chat request in database: %s", e)

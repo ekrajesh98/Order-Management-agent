@@ -48,6 +48,6 @@ class UserSession(Base):
         server_default=func.current_timestamp(),
     )
 
-    requests = relationship("UserRequest", back_populates="session")
+    chat_requests = relationship("UserChatRequest", back_populates="session")
     agents = relationship("SessionAgent", back_populates="session")
     messages = relationship("SessionAgentMessage", back_populates="session")
