@@ -115,7 +115,6 @@ class ChatService(ChatServiceABC):
 
             self._db_session.add(user_chat_request)
             await self._db_session.commit()
-            await self._db_session.refresh(user_chat_request)
 
         except Exception as e:
             logger.exception("Error recording user chat request in database: %s", e)

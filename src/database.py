@@ -100,15 +100,11 @@ class SyncDatabaseSessionManager:
         session = self._sessionmaker()
         try:
             yield session
-            session.commit()
         except Exception:
             session.rollback()
             raise
         finally:
             session.close()
-
-    def close(self) -> None:
-        self._engine.dispose()
 
 
 sync_database_session_manager = SyncDatabaseSessionManager(
