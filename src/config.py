@@ -2,8 +2,12 @@ from enum import StrEnum
 from functools import cached_property
 from typing import Annotated
 
+import boto3
 from pydantic import AnyUrl, BaseModel, BeforeValidator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from strands.models import Model
+from strands.models.bedrock import BedrockModel
+from strands.models.openai import OpenAIModel
 from strands.session.file_session_manager import FileSessionManager
 from strands.session.s3_session_manager import S3SessionManager
 
@@ -29,9 +33,44 @@ def parse_cors(v: str | list[str]) -> list[str] | str:
     raise ValueError(v)
 
 
+class ModelProvider(StrEnum):
+    OPENAI = "OPENAI"
+    AWS = "AWS"
+
+    @classmethod
+    def _missing_(cls, value):
+        if isinstance(value, str):
+            val_low = value.lower()
+            for member in cls:
+                if member.value.lower() == val_low:
+                    return member
+        return None
+
+
 class ModelSettings(BaseModel):
     NAME: str
-    API_KEY: str
+    API_KEY: str | None = None
+    PROVIDER: ModelProvider = ModelProvider.AWS
+
+    @model_validator(mode="after")
+    def validate_api_key(self):
+        if self.PROVIDER == ModelProvider.OPENAI and not self.API_KEY:
+            raise ValueError("API_KEY must be provided when PROVIDER is OPENAI")
+        return self
+
+    @property
+    def model(self) -> Model:
+        match self.PROVIDER:
+            case ModelProvider.OPENAI:
+                return OpenAIModel(
+                    client_args={"api_key": self.API_KEY},
+                    model_id=self.NAME,
+                )
+            case _:
+                session = boto3.Session(
+                    region_name="eu-west-2",
+                )
+                return BedrockModel(model_id=self.NAME, boto_session=session)
 
 
 class MCPServerSettings(BaseModel):

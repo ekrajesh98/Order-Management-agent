@@ -19,8 +19,6 @@ class OrderManagementAgentService(AgentServiceABC):
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
         self.agent_factory = OrderManagementAgentFactory(
-            settings.MODEL.NAME,
-            settings.MODEL.API_KEY,
             settings.SESSION_REPOSITORY.get_session_manager(self.session_id),
         )
         self.client_factory = MCPClientFactory(settings.MCP_SERVER.URL)
@@ -51,4 +49,5 @@ class OrderManagementAgentService(AgentServiceABC):
                 return response
 
         except Exception as e:
+            print(f"Error ocurred while processing the request: {e}")
             raise OrderManagementAgentServiceError from e

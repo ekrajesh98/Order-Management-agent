@@ -3,7 +3,9 @@ from typing import Any, List
 from mcp.client.streamable_http import streamablehttp_client
 from strands import Agent
 from strands.agent.conversation_manager import SlidingWindowConversationManager
-from strands.models.openai import OpenAIModel
+from strands.models import Model
+
+# from strands.models.openai import OpenAIModel
 from strands.session.file_session_manager import FileSessionManager
 from strands.session.s3_session_manager import S3SessionManager
 from strands.tools.mcp import MCPClient
@@ -12,6 +14,7 @@ from src.agent.custom_hooks import SensitiveDataMaskingHook
 from src.agent.custom_repository.sqlalchemy_repository import (
     SqlAlchemySessionManager,
 )
+from src.config import settings
 from src.context.request_context import RequestContext
 
 
@@ -20,15 +23,13 @@ class OrderManagementAgentFactory:
 
     def __init__(
         self,
-        model_name: str,
-        model_api_key: str,
         session_manager: FileSessionManager
         | S3SessionManager
         | SqlAlchemySessionManager,
+        model: Model = settings.MODEL.model,
     ) -> None:
-        self.model_name = model_name
-        self.__model_api_key = model_api_key
         self.session_manager = session_manager
+        self.model = model
 
     async def create_agent(
         self,
@@ -58,10 +59,7 @@ class OrderManagementAgentFactory:
         """
 
         agent = Agent(
-            model=OpenAIModel(
-                client_args={"api_key": self.__model_api_key},
-                model_id=self.model_name,
-            ),
+            model=self.model,
             tools=tools,
             conversation_manager=SlidingWindowConversationManager(),
             system_prompt=system_prompt,
